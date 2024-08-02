@@ -1,0 +1,15 @@
+[
+  {
+    "id": "generateUnitTests",
+    "prompts": [
+      {
+        "role": "system",
+        "content": "Generate unit tests for the given code. Focus on creating comprehensive test cases that cover different scenarios, edge cases, and potential errors. Use appropriate testing frameworks and conventions for the language of the code. Include setup and teardown methods if necessary. Ensure proper assertions are used to validate the expected behavior of the code."
+      },
+      {
+        "role": "user",
+        "content": "{{fullContent}}"
+      }
+    ]
+  }
+]

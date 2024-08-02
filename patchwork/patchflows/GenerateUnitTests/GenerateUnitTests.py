@@ -6,10 +6,10 @@ from patchwork.common.utils.step_typing import validate_steps_with_inputs
 from patchwork.step import Step
 from patchwork.steps import LLM, PR, CallCode2Prompt, ModifyCode
 
-_DEFAULT_PROMPT_JSON = Path(__file__).parent / "generate_readme_prompt.json"
+_DEFAULT_PROMPT_JSON = Path(__file__).parent / "generate_unit_tests_prompt.json"
 _DEFAULT_INPUT_FILE = Path(__file__).parent / "defaults.yml"
 
-class GenerateREADME(Step):
+class GenerateUnitTests(Step):
     def __init__(self, inputs: dict):
         PatchflowProgressBar(self).register_steps(
             CallCode2Prompt,
@@ -27,7 +27,7 @@ class GenerateREADME(Step):
             final_inputs["prompt_template_file"] = _DEFAULT_PROMPT_JSON
 
         if "prompt_id" not in final_inputs.keys():
-            final_inputs["prompt_id"] = "generateREADME"
+            final_inputs["prompt_id"] = "generateUnitTests"
 
         if "folder_path" not in final_inputs.keys():
             final_inputs["folder_path"] = Path.cwd()
@@ -35,7 +35,7 @@ class GenerateREADME(Step):
             final_inputs["folder_path"] = Path(final_inputs["folder_path"])
 
         final_inputs["pr_title"] = f"PatchWork {self.__class__.__name__}"
-        final_inputs["mode"] = "readme"
+        final_inputs["mode"] = "unit_tests"
 
         validate_steps_with_inputs(
             set(final_inputs.keys()).union({"prompt_values"}), CallCode2Prompt, LLM, ModifyCode, PR
@@ -54,8 +54,8 @@ class GenerateREADME(Step):
         outputs = ModifyCode(self.inputs).run()
         self.inputs.update(outputs)
 
-        number = len(self.inputs["modified_code_files"])
-        self.inputs["pr_header"] = f"This pull request from patchwork updates {number} README(s)."
+        number = len(self.inputs["created_test_files"])
+        self.inputs["pr_header"] = f"This pull request from patchwork adds {number} unit test file(s)."
         outputs = PR(self.inputs).run()
         self.inputs.update(outputs)
 

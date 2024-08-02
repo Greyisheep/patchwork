@@ -1,12 +1,9 @@
 from patchwork.common.utils.utils import exclude_none_dict
 from patchwork.step import Step
 from patchwork.steps.CallLLM.CallLLM import CallLLM
-from patchwork.steps.ExtractModelResponse.ExtractModelResponse import (
-    ExtractModelResponse,
-)
+from patchwork.steps.ExtractModelResponse.ExtractModelResponse import ExtractModelResponse
 from patchwork.steps.LLM.typed import LLMInputs
 from patchwork.steps.PreparePrompt.PreparePrompt import PreparePrompt
-
 
 class LLM(Step):
     def __init__(self, inputs):

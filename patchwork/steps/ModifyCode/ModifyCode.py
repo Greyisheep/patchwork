@@ -1,49 +1,20 @@
-from __future__ import annotations
-
+import os
 from patchwork.logger import logger
 from patchwork.step import Step
 
-
 def save_file_contents(file_path, content):
-    """Utility function to save content to a file."""
     with open(file_path, "w") as file:
         file.write(content)
 
-
-def handle_indent(src: list[str], target: list[str], start: int, end: int) -> list[str]:
-    if len(target) < 1:
-        return target
-
-    if start == end:
-        end = start + 1
-
-    first_src_line = next((line for line in src[start:end] if line.strip() != ""), "")
-    src_indent_count = len(first_src_line) - len(first_src_line.lstrip())
-    first_target_line = next((line for line in target if line.strip() != ""), "")
-    target_indent_count = len(first_target_line) - len(first_target_line.lstrip())
-    indent_diff = src_indent_count - target_indent_count
-
-    indent = ""
-    if indent_diff > 0:
-        indent_unit = first_src_line[0]
-        indent = indent_unit * indent_diff
-
-    return [indent + line for line in target]
-
-
-def replace_code_in_file(file_path, start_line, end_line, new_code):
-    """Replaces specified lines in a file with new code."""
-    with open(file_path, "r") as file:
-        text = file.read()
-
-    lines = text.splitlines(keepends=True)
-
-    # Insert the new code at the start line after converting it into a list of lines
-    lines[start_line:end_line] = handle_indent(lines, new_code.splitlines(keepends=True), start_line, end_line)
-
-    # Save the modified contents back to the file
-    save_file_contents(file_path, "".join(lines))
-
+def create_test_file(original_file_path, test_content):
+    dir_path, file_name = os.path.split(original_file_path)
+    test_file_name = f"test_{file_name}"
+    test_file_path = os.path.join(dir_path, test_file_name)
+    
+    with open(test_file_path, "w") as file:
+        file.write(test_content)
+    
+    return test_file_path
 
 class ModifyCode(Step):
     UPDATED_SNIPPETS_KEY = "extracted_responses"
@@ -58,23 +29,46 @@ class ModifyCode(Step):
 
         self.files_to_patch = inputs[self.FILES_TO_PATCH]
         self.extracted_responses = inputs[self.UPDATED_SNIPPETS_KEY]
+        self.mode = inputs.get("mode", "readme")
 
     def run(self) -> dict:
+        if self.mode == "readme":
+            return self._handle_readme_mode()
+        elif self.mode == "unit_tests":
+            return self._handle_unit_tests_mode()
+        else:
+            raise ValueError(f"Unsupported mode: {self.mode}")
+
+    def _handle_readme_mode(self) -> dict:
         modified_code_files = []
-        sorted_list = sorted(
-            zip(self.files_to_patch, self.extracted_responses), key=lambda x: x[0]["startLine"], reverse=True
-        )
-        for code_snippet, extracted_response in sorted_list:
+        for code_snippet, extracted_response in zip(self.files_to_patch, self.extracted_responses):
             uri = code_snippet["uri"]
-            start_line = code_snippet["startLine"]
-            end_line = code_snippet["endLine"]
-            new_code = extracted_response.get("patch")
-            if new_code is None or new_code == "":
+            new_content = extracted_response.get("patch")
+            if new_content is None or new_content == "":
                 continue
 
-            replace_code_in_file(uri, start_line, end_line, new_code)
-            modified_code_file = dict(path=uri, start_line=start_line, end_line=end_line, **extracted_response)
+            save_file_contents(uri, new_content)
+            modified_code_file = dict(path=uri, **extracted_response)
             modified_code_files.append(modified_code_file)
 
-        logger.info(f"Run completed {self.__class__.__name__}")
+        logger.info(f"Run completed {self.__class__.__name__} in readme mode")
         return dict(modified_code_files=modified_code_files)
+
+    def _handle_unit_tests_mode(self) -> dict:
+        created_test_files = []
+        for code_snippet, extracted_response in zip(self.files_to_patch, self.extracted_responses):
+            original_file_path = code_snippet["uri"]
+            new_test_code = extracted_response.get("patch")
+            if new_test_code is None or new_test_code == "":
+                continue
+
+            test_file_path = create_test_file(original_file_path, new_test_code)
+            created_test_file = dict(
+                original_path=original_file_path,
+                test_path=test_file_path,
+                **extracted_response
+            )
+            created_test_files.append(created_test_file)
+
+        logger.info(f"Run completed {self.__class__.__name__} in unit tests mode")
+        return dict(created_test_files=created_test_files)
