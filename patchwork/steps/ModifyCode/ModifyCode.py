@@ -1,3 +1,12 @@
+"""
+Runs the ModifyCode step which modifies code files based on the specified mode.
+If the mode is 'readme', it updates code files with extracted patches.
+If the mode is 'unit_tests', it creates test files based on extracted patches.
+:param inputs: a dictionary containing 'files_to_patch', 'extracted_responses', and an optional 'mode'
+:return: a dictionary with modified code files or created test files based on the mode
+"""
+
+
 import os
 from patchwork.logger import logger
 from patchwork.step import Step
